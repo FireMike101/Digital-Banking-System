@@ -23,11 +23,12 @@ Connect Compass using the same MongoDB URI. The `digital_banking` database may n
 ## Files
 
 - `src/app.js`: Express middleware, health endpoint, and JSON error responses.
-- `src/server.js`: database connection, HTTP startup, and graceful shutdown.
-- `src/config/env.js`: environment variable validation.
+- `src/server.js`: connects using `process.env.MONGODB_URI`, then starts Express with `app.listen()`.
 - `.env.example`: example configuration; actual credentials belong only in ignored `.env`.
 
 ## Current error handling
+
+`npm start` and `npm run dev` load `.env` automatically through Node's `--env-file` option. No separate configuration file or `dotenv` package is needed. `PORT` defaults to 3000.
 
 Unknown routes return 404, malformed JSON returns 400, and JSON bodies larger than 16 KB return 413. Unexpected errors return a generic 500 response. The server refuses to start if its database connection fails, and health checks return 503 if the connection is lost later.
 

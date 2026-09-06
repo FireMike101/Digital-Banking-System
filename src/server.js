@@ -1,54 +1,40 @@
 import mongoose from 'mongoose';
 import { app } from './app.js';
-import { env } from './config/env.js';
 import { Customer } from './models/customer.js';
 import { Session } from './models/session.js';
 import { Onboarding } from './models/onboarding.js';
 
-// Fail promptly when MongoDB is unavailable rather than silently buffering operations.
-mongoose.set('bufferCommands', false);
+// npm start and npm run dev load .env using Node's --env-file option.
+const PORT = Number(process.env.PORT || 3000);
 
-let server;
-let stopping = false;
-
-async function shutdown(exitCode = 0) {
-  if (stopping) return;
-  stopping = true;
-  // Bound shutdown time in case an open connection never finishes.
-  const timer = setTimeout(() => process.exit(1), 10000);
-  timer.unref();
+async function startServer() {
   try {
-    if (server?.listening) {
-      await new Promise((resolve, reject) => {
-        server.close((error) => error ? reject(error) : resolve());
-      });
+    if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+      console.error('PORT must be a number between 1 and 65535.');
+      process.exit(1);
     }
-    await mongoose.disconnect();
-    process.exitCode = exitCode;
+
+    // Connect to MongoDB before starting the Express server.
+    await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
+    console.log('MongoDB connected successfully.');
+
+    // Wait for database rules that prevent duplicate emails and onboarding records.
+    await Customer.init();
+    await Session.init();
+    await Onboarding.init();
+
+    const server = app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+    server.on('error', () => {
+      console.error('Server could not start. Check whether the port is already in use.');
+      process.exit(1);
+    });
   } catch {
-    process.exitCode = 1;
-  } finally {
-    clearTimeout(timer);
+    // Do not print connection details because they may contain the database password.
+    console.error('Database setup failed. Check MONGODB_URI and your MongoDB connection.');
+    process.exit(1);
   }
 }
 
-try {
-  // Only accept HTTP requests after the database connection succeeds.
-  await mongoose.connect(env.mongoUri, { serverSelectionTimeoutMS: 5000 });
-  // Ensure uniqueness and expiry indexes exist before serving authentication requests.
-  await Promise.all([Customer.init(), Session.init(), Onboarding.init()]);
-  server = app.listen(env.port, () => {
-    console.log(`Server listening on http://localhost:${env.port}`);
-  });
-  server.on('error', (error) => {
-    console.error('HTTP server failed:', error.code ?? error.name);
-    void shutdown(1);
-  });
-} catch (error) {
-  // Connection error messages can contain credentials, so log only the error type.
-  console.error('Database startup failed. Check MongoDB and MONGODB_URI. Type:', error.name);
-  await shutdown(1);
-}
-
-process.on('SIGINT', () => void shutdown());
-process.on('SIGTERM', () => void shutdown());
+startServer();
