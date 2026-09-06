@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import dns from 'node:dns/promises';
 import { app } from './app.js';
 import { Customer } from './models/customer.js';
 import { Session } from './models/session.js';
@@ -6,6 +7,10 @@ import { Onboarding } from './models/onboarding.js';
 
 // npm start and npm run dev load .env using Node's --env-file option.
 const PORT = Number(process.env.PORT || 3000);
+
+// The default DNS resolver on this device refuses Atlas SRV/TXT lookups.
+// Use Cloudflare for Node's DNS queries; this does not change Windows DNS settings.
+dns.setServers(['1.1.1.1', '1.0.0.1']);
 
 async function startServer() {
   try {

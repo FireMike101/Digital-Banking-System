@@ -30,6 +30,8 @@ Connect Compass using the same MongoDB URI. The `digital_banking` database may n
 
 `npm start` and `npm run dev` load `.env` automatically through Node's `--env-file` option. No separate configuration file or `dotenv` package is needed. `PORT` defaults to 3000.
 
+This device's default Node DNS resolver returned `ECONNREFUSED` for Atlas SRV/TXT records, while Cloudflare resolved them successfully. `src/server.js` therefore sets Cloudflare DNS before connecting. This affects Node's DNS queries, not Windows DNS settings. It does not fix an incorrect password or an Atlas IP access restriction. See [Atlas connection troubleshooting](https://www.mongodb.com/docs/atlas/troubleshoot-connection/).
+
 Unknown routes return 404, malformed JSON returns 400, and JSON bodies larger than 16 KB return 413. Unexpected errors return a generic 500 response. The server refuses to start if its database connection fails, and health checks return 503 if the connection is lost later.
 
 This is an initial foundation, not a finished banking service. Use only synthetic BVN/NIN data throughout the assignment. Never commit credentials or real identity data.
