@@ -1,6 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import mongoose from 'mongoose';
+import { authRouter } from './routes/auth.js';
 
 export const app = express();
 
@@ -17,6 +18,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.use('/api/auth', authRouter);
+
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found.' });
 });
@@ -24,6 +27,10 @@ app.use((req, res) => {
 // Express recognizes error middleware by its four arguments.
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
+
+  if (['MongoNetworkError', 'MongoServerSelectionError', 'MongooseServerSelectionError'].includes(err.name)) {
+    return res.status(503).json({ success: false, message: 'Database is temporarily unavailable. Please try again later.' });
+  }
 
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ success: false, message: 'Request body must contain valid JSON.' });

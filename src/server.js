@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import { app } from './app.js';
 import { env } from './config/env.js';
+import { Customer } from './models/customer.js';
+import { Session } from './models/session.js';
 
 // Fail promptly when MongoDB is unavailable rather than silently buffering operations.
 mongoose.set('bufferCommands', false);
@@ -32,6 +34,8 @@ async function shutdown(exitCode = 0) {
 try {
   // Only accept HTTP requests after the database connection succeeds.
   await mongoose.connect(env.mongoUri, { serverSelectionTimeoutMS: 5000 });
+  // Ensure uniqueness and expiry indexes exist before serving authentication requests.
+  await Promise.all([Customer.init(), Session.init()]);
   server = app.listen(env.port, () => {
     console.log(`Server listening on http://localhost:${env.port}`);
   });

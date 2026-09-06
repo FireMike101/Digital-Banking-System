@@ -1,6 +1,6 @@
 # Digital Banking System
 
-Step 1: Express server and MongoDB connection. Customer and banking endpoints will be added in subsequent steps.
+Completed: Express setup, MongoDB connection, customer registration and login. Identity verification and banking operations come next.
 
 ## Requirements
 
@@ -32,3 +32,54 @@ Connect Compass using the same MongoDB URI. The `digital_banking` database may n
 Unknown routes return 404, malformed JSON returns 400, and JSON bodies larger than 16 KB return 413. Unexpected errors return a generic 500 response. The server refuses to start if its database connection fails, and health checks return 503 if the connection is lost later.
 
 This is an initial foundation, not a finished banking service. Use only synthetic BVN/NIN data throughout the assignment. Never commit credentials or real identity data.
+
+## Step 2: Registration and login
+
+A customer login is different from a bank account. Registering here does not verify a BVN/NIN or create a funded bank account.
+
+The main files are:
+
+- `src/models/customer.js`: describes the customer data stored in MongoDB.
+- `src/models/session.js`: stores logins and their expiry times.
+- `src/routes/auth.js`: registration, login, profile and logout routes.
+- `src/middleware/authenticate.js`: checks a login token before allowing access.
+
+### Try it in Postman
+
+Start the server with `npm run dev`. Choose Body → raw → JSON for POST requests.
+
+1. Send `POST http://localhost:3000/api/auth/register` with:
+
+```json
+{
+  "fullName": "Test Customer",
+  "email": "customer@example.com",
+  "password": "testing-password-123"
+}
+```
+
+Expect status 201. The password is hashed before saving; the response excludes the hash. Emails are trimmed and lowercased. A repeated email returns 409.
+
+2. Send `POST http://localhost:3000/api/auth/login` with:
+
+```json
+{
+  "email": "customer@example.com",
+  "password": "testing-password-123"
+}
+```
+
+Copy the returned `token`. It is valid for one hour.
+
+3. Send `GET http://localhost:3000/api/auth/me`. In Postman's Authorization tab, choose Bearer Token and paste the token. This returns only the customer associated with that login.
+4. Send `POST http://localhost:3000/api/auth/logout` using the same Authorization setting. That token can no longer access the profile.
+
+Invalid input returns 400. Invalid login credentials, missing tokens and expired sessions return 401. Registration and login share a limit of 20 requests per IP address every 15 minutes (429 when exceeded).
+
+The rate limit is stored in this server's memory and resets on restart. Multiple server instances would need shared rate-limit storage. Use HTTPS when deploying so passwords and tokens are encrypted in transit.
+
+### Tests
+
+Run `npm test`. These HTTP tests replace database calls with temporary test data; they do not read `.env` or connect to Atlas. They cover validation, password hashing, duplicate-email handling, login, profile ownership, expiry, logout and rate limiting. They do not verify real MongoDB connectivity or index enforcement; use the Postman steps with your development database for that check.
+
+Password hashing uses [bcryptjs](https://github.com/dcodeIO/bcrypt.js). Express 5 forwards errors thrown by async routes to our shared [error handler](https://expressjs.com/en/guide/error-handling/). MongoDB enforces unique emails through an index, not a Mongoose validation check; see [Mongoose's explanation](https://mongoosejs.com/docs/validation.html#the-unique-option-is-not-a-validator).
