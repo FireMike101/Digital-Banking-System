@@ -35,6 +35,12 @@ This is an initial foundation, not a finished banking service. Use only syntheti
 
 ## Step 2: Registration and login
 
+### Swagger documentation
+
+With the server running, open http://localhost:3000/api/docs/ for interactive API documentation. The OpenAPI JSON is at `/api/docs.json`.
+
+Use **Try it out** to register and log in. Copy the login token, click **Authorize**, and paste only the token. You can then test protected routes such as `/api/auth/me`. Reloading the page clears Swagger's saved authorization.
+
 A customer login is different from a bank account. Registering here does not verify a BVN/NIN or create a funded bank account.
 
 The main files are:

@@ -2,6 +2,8 @@ import express from 'express';
 import helmet from 'helmet';
 import mongoose from 'mongoose';
 import { authRouter } from './routes/auth.js';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerDocument } from './docs/swagger.js';
 
 export const app = express();
 
@@ -9,6 +11,15 @@ app.disable('x-powered-by');
 app.use(helmet());
 // Limit request sizes so clients cannot submit arbitrarily large JSON bodies.
 app.use(express.json({ limit: '16kb' }));
+
+app.get('/api/docs.json', (req, res) => res.json(swaggerDocument));
+// Swagger uses an inline style; keep this exception limited to the documentation page.
+app.use('/api/docs', helmet({ contentSecurityPolicy: { directives: {
+  'style-src': ["'self'", "'unsafe-inline'"],
+  'upgrade-insecure-requests': null,
+} } }), swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+  swaggerOptions: { persistAuthorization: false, validatorUrl: null },
+}));
 
 app.get('/api/health', (req, res) => {
   const connected = mongoose.connection.readyState === 1;
