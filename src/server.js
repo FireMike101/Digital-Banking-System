@@ -4,6 +4,7 @@ import { app } from './app.js';
 import { Customer } from './models/customer.js';
 import { Session } from './models/session.js';
 import { Onboarding } from './models/onboarding.js';
+import { Account } from './models/account.js';
 
 // npm start and npm run dev load .env using Node's --env-file option.
 const PORT = Number(process.env.PORT || 3000);
@@ -27,6 +28,7 @@ async function startServer() {
     await Customer.init();
     await Session.init();
     await Onboarding.init();
+    await Account.init();
 
     const server = app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);

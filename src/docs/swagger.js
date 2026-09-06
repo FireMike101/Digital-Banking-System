@@ -28,6 +28,14 @@ export const swaggerDocument = {
       bearerAuth: { type: 'http', scheme: 'bearer', description: 'Paste the token from login, without the word Bearer. Tokens expire after one hour.' },
     },
     schemas: {
+      Account: {
+        type: 'object', properties: {
+          accountNumber: { type: 'string', example: '1234567890' },
+          accountName: { type: 'string', example: 'Test Customer' },
+          balance: { type: 'number', example: 15000, description: 'Simulated balance in naira.' },
+          currency: { type: 'string', enum: ['NGN'] }, mode: { type: 'string', enum: ['local-test'] },
+        },
+      },
       Error: { type: 'object', properties: { success: { type: 'boolean', example: false }, message: { type: 'string' } } },
       Customer: {
         type: 'object', properties: {
@@ -38,6 +46,45 @@ export const swaggerDocument = {
     },
   },
   paths: {
+    '/api/accounts': {
+      post: {
+        tags: ['Local test accounts'], summary: 'Create your one local test account', security: [{ bearerAuth: [] }],
+        description: 'Requires completed BVN/NIN verification. Send no body. Starts with a simulated ₦15,000 balance in MongoDB. Does not call NibssByPhoenix or create an external account.',
+        responses: {
+          201: jsonResponse('Local account created.', { type: 'object', properties: {
+            success: { type: 'boolean', example: true }, account: { $ref: '#/components/schemas/Account' },
+          } }),
+          400: errorResponse('Request body must be empty.'), 401: errorResponse('Login required.'),
+          403: errorResponse('Complete identity verification first.'), 409: errorResponse('You already have an account.'),
+          413: errorResponse('Body exceeds 16 KB.'), 500: errorResponse('Unexpected error.'), 503: errorResponse('Service temporarily unavailable.'),
+        },
+      },
+    },
+    '/api/accounts/me': {
+      get: {
+        tags: ['Local test accounts'], summary: 'View your own local account', security: [{ bearerAuth: [] }],
+        responses: {
+          200: jsonResponse('Your local test account.', { type: 'object', properties: {
+            success: { type: 'boolean', example: true }, account: { $ref: '#/components/schemas/Account' },
+          } }),
+          401: errorResponse('Login required.'), 404: errorResponse('No account created yet.'),
+          500: errorResponse('Unexpected error.'), 503: errorResponse('Database unavailable.'),
+        },
+      },
+    },
+    '/api/accounts/balance': {
+      get: {
+        tags: ['Local test accounts'], summary: 'Check your simulated balance', security: [{ bearerAuth: [] }],
+        responses: {
+          200: jsonResponse('Balance in naira.', { type: 'object', properties: {
+            success: { type: 'boolean', example: true }, balance: { type: 'number', example: 15000 },
+            currency: { type: 'string', enum: ['NGN'] }, mode: { type: 'string', enum: ['local-test'] },
+          } }),
+          401: errorResponse('Login required.'), 404: errorResponse('No account created yet.'),
+          500: errorResponse('Unexpected error.'), 503: errorResponse('Database unavailable.'),
+        },
+      },
+    },
     '/api/onboarding': {
       get: {
         tags: ['Onboarding'], summary: 'Check your own onboarding progress', security: [{ bearerAuth: [] }],
