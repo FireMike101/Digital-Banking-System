@@ -1,0 +1,41 @@
+import express from 'express';
+import helmet from 'helmet';
+import mongoose from 'mongoose';
+
+export const app = express();
+
+app.disable('x-powered-by');
+app.use(helmet());
+// Limit request sizes so clients cannot submit arbitrarily large JSON bodies.
+app.use(express.json({ limit: '16kb' }));
+
+app.get('/api/health', (req, res) => {
+  const connected = mongoose.connection.readyState === 1;
+  res.status(connected ? 200 : 503).json({
+    success: connected,
+    message: connected ? 'Service is ready.' : 'Database is unavailable.',
+  });
+});
+
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found.' });
+});
+
+// Express recognizes error middleware by its four arguments.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ success: false, message: 'Request body must contain valid JSON.' });
+  }
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ success: false, message: 'Request body is too large.' });
+  }
+  if (err.status >= 400 && err.status < 500) {
+    return res.status(err.status).json({ success: false, message: 'Invalid request.' });
+  }
+
+  // Avoid returning stack traces or logging request bodies that may contain private data.
+  console.error('Unexpected request error:', err.name);
+  res.status(500).json({ success: false, message: 'An unexpected error occurred.' });
+});
