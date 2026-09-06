@@ -30,6 +30,7 @@ async function startServer() {
 
     const server = app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Swagger docs: http://localhost:${PORT}/api/docs/`);
     });
     server.on('error', () => {
       console.error('Server could not start. Check whether the port is already in use.');
