@@ -1,0 +1,19 @@
+{
+  "name": "digital-banking-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Beginner digital banking backend using Express and MongoDB",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file=.env src/server.js",
+    "start": "node --env-file=.env src/server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "mongoose": "^9.9.5"
+  }
+}
