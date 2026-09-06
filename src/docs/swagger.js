@@ -38,6 +38,50 @@ export const swaggerDocument = {
     },
   },
   paths: {
+    '/api/onboarding': {
+      get: {
+        tags: ['Onboarding'], summary: 'Check your own onboarding progress', security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Returns onboarding type and status (pending, created or verified), or null if not started.' },
+          401: errorResponse('Login required.'), 500: errorResponse('Unexpected error.'), 503: errorResponse('Database unavailable.'),
+        },
+      },
+      post: {
+        tags: ['Onboarding'], summary: 'Create a fictional BVN or NIN identity', security: [{ bearerAuth: [] }],
+        description: 'Use fictional details only. The server generates the test identity number; do not supply a BVN or NIN. Creation and verification share a limit of 20 attempts per IP per 15 minutes. Pending after a timeout requires provider reconciliation, not another creation request.',
+        requestBody: { required: true, content: { 'application/json': { schema: {
+          type: 'object', additionalProperties: false, required: ['type', 'firstName', 'lastName', 'dob'],
+          properties: {
+            type: { type: 'string', enum: ['BVN', 'NIN'], example: 'BVN' },
+            firstName: { type: 'string', minLength: 2, maxLength: 100, example: 'Test' },
+            lastName: { type: 'string', minLength: 2, maxLength: 100, example: 'Customer' },
+            dob: { type: 'string', format: 'date', example: '1995-06-15', description: 'Valid calendar date, not in the future.' },
+            phone: { type: 'string', pattern: '^0[0-9]{10}$', example: '08000000000', description: 'Required for BVN only. Use a test phone number.' },
+          },
+        } } } },
+        responses: {
+          201: { description: 'Test identity created; verification is still required.' },
+          400: errorResponse('Invalid input or a supplied identity number.'), 401: errorResponse('Login required.'),
+          409: errorResponse('Onboarding already exists.'), 413: errorResponse('Body exceeds 16 KB.'),
+          429: errorResponse('Too many attempts.'), 500: errorResponse('Unexpected error.'),
+          502: errorResponse('Provider did not confirm creation. Check onboarding status.'),
+          503: errorResponse('Database unavailable.'), 504: errorResponse('Provider unavailable or timeout; outcome is uncertain.'),
+        },
+      },
+    },
+    '/api/onboarding/verify': {
+      post: {
+        tags: ['Onboarding'], summary: 'Verify your previously created test identity', security: [{ bearerAuth: [] }],
+        description: 'No request body is needed. The saved identity belonging to your login is used. Repeating a successful verification is safe.',
+        responses: {
+          200: { description: 'Identity verified; customer onboardingStatus is verified.' },
+          401: errorResponse('Login required.'), 409: errorResponse('Confirmed identity creation is required first.'),
+          429: errorResponse('Too many attempts.'), 500: errorResponse('Unexpected error.'),
+          502: errorResponse('Provider did not confirm verification.'), 503: errorResponse('Database unavailable.'),
+          504: errorResponse('Provider could not be reached; verification can be retried.'),
+        },
+      },
+    },
     '/api/health': {
       get: { tags: ['Health'], summary: 'Check database availability', responses: {
         200: { description: 'Service is ready; success is true.' },

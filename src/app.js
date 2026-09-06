@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { authRouter } from './routes/auth.js';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerDocument } from './docs/swagger.js';
+import { onboardingRouter } from './routes/onboarding.js';
 
 export const app = express();
 
@@ -30,6 +31,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/onboarding', onboardingRouter);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found.' });

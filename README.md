@@ -1,6 +1,6 @@
 # Digital Banking System
 
-Completed: Express setup, MongoDB connection, customer registration and login. Identity verification and banking operations come next.
+Completed: Express setup, MongoDB connection, customer authentication, Swagger documentation and test BVN/NIN onboarding. Bank account creation comes next.
 
 ## Requirements
 
@@ -89,3 +89,34 @@ The rate limit is stored in this server's memory and resets on restart. Multiple
 Run `npm test`. These HTTP tests replace database calls with temporary test data; they do not read `.env` or connect to Atlas. They cover validation, password hashing, duplicate-email handling, login, profile ownership, expiry, logout and rate limiting. They do not verify real MongoDB connectivity or index enforcement; use the Postman steps with your development database for that check.
 
 Password hashing uses [bcryptjs](https://github.com/dcodeIO/bcrypt.js). Express 5 forwards errors thrown by async routes to our shared [error handler](https://expressjs.com/en/guide/error-handling/). MongoDB enforces unique emails through an index, not a Mongoose validation check; see [Mongoose's explanation](https://mongoosejs.com/docs/validation.html#the-unique-option-is-not-a-validator).
+
+## Step 3: Test identity onboarding
+
+Log in and authorize in Swagger first. Send `POST /api/onboarding` with fictional details:
+
+```json
+{
+  "type": "BVN",
+  "firstName": "Test",
+  "lastName": "Customer",
+  "dob": "1995-06-15",
+  "phone": "08000000000"
+}
+```
+
+For NIN, set `type` to `NIN`; phone is not required. Our server generates an 11-digit test number. Do not enter any real BVN/NIN; fields for supplying identity numbers are rejected.
+
+After a 201 response, send `POST /api/onboarding/verify` with the same login token and no body. Only successful provider verification changes the customer's status to `verified`. This still does not create a bank account or fund it.
+
+`GET /api/onboarding` returns only your onboarding type and status:
+
+- `null`: no onboarding record exists yet.
+- `pending`: creation has started, but success has not been saved. If a request timed out, the provider outcome must be reconciled before continuing. There is no automatic reset or retry of uncertain creation in this version.
+- `created`: the provider confirmed creation; verification can run.
+- `verified`: verification succeeded.
+
+Duplicate creation requests return 409. A definite provider rejection removes the local pending record so corrected details can be submitted. Network failures and uncertain provider responses keep the pending record to avoid creating duplicate identities. Verification failures leave the customer unverified and can be retried after the problem is resolved.
+
+The integration follows [NibssByPhoenix Swagger](https://nibssbyphoenix.onrender.com/api/docs/): `/api/insertBvn` returns 201, `/api/insertNin` returns 200, and `/api/validateBvn` and `/api/validateNin` return 200 on success. Its schema does not define response bodies, so this version uses those documented status codes. These identity routes are documented without authentication. Bank onboarding and credentials are a separate step before account creation.
+
+Onboarding tests mock the provider and MongoDB. They never submit identities to the shared provider, read environment files or access Atlas. A live provider integration check remains to be done with your fictional test customer.
