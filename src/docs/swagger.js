@@ -33,7 +33,9 @@ export const swaggerDocument = {
           accountNumber: { type: 'string', example: '1234567890' },
           accountName: { type: 'string', example: 'Test Customer' },
           balance: { type: 'number', example: 15000, description: 'Simulated balance in naira.' },
-          currency: { type: 'string', enum: ['NGN'] }, mode: { type: 'string', enum: ['local-test'] },
+          currency: { type: 'string', enum: ['NGN'] }, mode: { type: 'string', enum: ['local-test', 'nibss'] },
+          status: { type: 'string', enum: ['pending', 'active'] },
+          openingBalance: { type: 'number', description: 'Opening balance returned by the provider, in naira.' },
         },
       },
       Error: { type: 'object', properties: { success: { type: 'boolean', example: false }, message: { type: 'string' } } },
@@ -46,6 +48,28 @@ export const swaggerDocument = {
     },
   },
   paths: {
+    '/api/accounts/provider': {
+      post: {
+        tags: ['Provider accounts'], summary: 'Create an account with NibssByPhoenix', security: [{ bearerAuth: [] }],
+        description: 'Requires verified onboarding. Bank credentials are read by the server, never supplied here. If you already have a local test account, explicitly replace it using the optional flag. Uncertain creation stays pending; do not retry it automatically.',
+        requestBody: { required: false, content: { 'application/json': { schema: {
+          type: 'object', additionalProperties: false, properties: {
+            replaceLocalTestAccount: { type: 'boolean', default: false, description: 'Replaces your local account and simulated balance. No local funds are transferred to the provider.' },
+          },
+        } } } },
+        responses: {
+          201: jsonResponse('Provider account confirmed.', { type: 'object', properties: {
+            success: { type: 'boolean' }, account: { $ref: '#/components/schemas/Account' },
+            openingFundingMatchesRequirement: { type: 'boolean', description: 'True only if the provider returned an opening balance of ₦15,000.' },
+          } }),
+          400: errorResponse('Invalid input.'), 401: errorResponse('Customer login required.'),
+          403: errorResponse('Identity verification required.'), 409: errorResponse('Account exists or creation is pending.'),
+          413: errorResponse('Body exceeds 16 KB.'), 500: errorResponse('Unexpected database error.'),
+          502: errorResponse('Provider rejected the operation or returned an incomplete response.'),
+          503: errorResponse('Bank credentials not configured or database unavailable.'), 504: errorResponse('Provider could not be reached.'),
+        },
+      },
+    },
     '/api/accounts': {
       post: {
         tags: ['Local test accounts'], summary: 'Create your one local test account', security: [{ bearerAuth: [] }],
@@ -62,26 +86,29 @@ export const swaggerDocument = {
     },
     '/api/accounts/me': {
       get: {
-        tags: ['Local test accounts'], summary: 'View your own local account', security: [{ bearerAuth: [] }],
+        tags: ['Accounts'], summary: 'View your own account', security: [{ bearerAuth: [] }],
+        description: 'Provider accounts fetch a live balance. Pending creation returns only mode and status, without a number or balance.',
         responses: {
-          200: jsonResponse('Your local test account.', { type: 'object', properties: {
+          200: jsonResponse('Your account or pending status.', { type: 'object', properties: {
             success: { type: 'boolean', example: true }, account: { $ref: '#/components/schemas/Account' },
           } }),
           401: errorResponse('Login required.'), 404: errorResponse('No account created yet.'),
-          500: errorResponse('Unexpected error.'), 503: errorResponse('Database unavailable.'),
+          500: errorResponse('Unexpected error.'), 502: errorResponse('Provider error.'), 503: errorResponse('Service unavailable.'), 504: errorResponse('Provider timeout.'),
         },
       },
     },
     '/api/accounts/balance': {
       get: {
-        tags: ['Local test accounts'], summary: 'Check your simulated balance', security: [{ bearerAuth: [] }],
+        tags: ['Accounts'], summary: 'Check your account balance', security: [{ bearerAuth: [] }],
+        description: 'Fetches a live provider balance for nibss accounts. Local test accounts return their simulated MongoDB balance.',
         responses: {
           200: jsonResponse('Balance in naira.', { type: 'object', properties: {
             success: { type: 'boolean', example: true }, balance: { type: 'number', example: 15000 },
-            currency: { type: 'string', enum: ['NGN'] }, mode: { type: 'string', enum: ['local-test'] },
+            currency: { type: 'string', enum: ['NGN'] }, mode: { type: 'string', enum: ['local-test', 'nibss'] },
           } }),
           401: errorResponse('Login required.'), 404: errorResponse('No account created yet.'),
-          500: errorResponse('Unexpected error.'), 503: errorResponse('Database unavailable.'),
+          409: errorResponse('Provider creation is pending.'), 500: errorResponse('Unexpected error.'),
+          502: errorResponse('Provider error.'), 503: errorResponse('Service unavailable.'), 504: errorResponse('Provider timeout.'),
         },
       },
     },
