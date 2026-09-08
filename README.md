@@ -1,6 +1,6 @@
 # Digital Banking System
 
-Completed: Express setup, MongoDB connection, customer authentication, Swagger documentation and test BVN/NIN onboarding. Bank account creation comes next.
+Implemented: customer authentication, BVN/NIN onboarding, provider account creation, name enquiry, balance checks, intra-bank/inter-bank transfers, transaction status, private history, and Swagger documentation. Provider-backed onboarding, account creation, funding, name enquiry, transfer, balance, and status have been verified live with fictional test customers. A live inter-bank transfer still requires a test account from another registered bank.
 
 ## Requirements
 

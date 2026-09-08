@@ -14,4 +14,4 @@ The response does not include the MongoDB customer ID or internal document ID. I
 
 When a provider reference exists, the backend asks NibssByPhoenix for the current status and saves it as `pending`, `successful`, or `failed`. When a timed-out transfer has no provider reference, the endpoint returns the saved pending status and explains that manual review is required. The transfer must not be repeated automatically.
 
-The provider status response for a successful transfer has not yet been confirmed live because no live transfer has been made. Tests cover `success`, `successful`, `completed`, `pending`, `processing`, `failed`, `failure`, and `reversed` provider values using fake responses.
+On 8 September 2026, the status endpoint refreshed a live transfer from NibssByPhoenix and returned `successful`. The same transaction appeared in the sender's private history. Tests also cover `success`, `successful`, `completed`, `pending`, `processing`, `failed`, `failure`, and `reversed` provider values using fake responses.

@@ -21,7 +21,7 @@ We do not add ₦15,000 locally to provider accounts. `openingFundingMatchesRequ
 
 On 7 September 2026, live authentication succeeded. One fictional Integration Test BVN was created and verified. Provider account creation with uppercase `kycType: "BVN"` returned HTTP 500; a read-only account-list check returned zero accounts. The coordinator subsequently clarified that account creation requires lowercase `"bvn"`. The adapter now converts the stored identity type to lowercase (`bvn` or `nin`) before sending it. Our earlier attribution of the failure to the provider was premature. This probe is separate from application customer records.
 
-The user then confirmed successful account creation directly in provider Swagger with lowercase `bvn`, an `account` response envelope, and a ₦15,000 balance. This matches the adapter. Full creation through our app still needs its own end-to-end test.
+The user then confirmed successful account creation directly in provider Swagger with lowercase `bvn`, an `account` response envelope, and a ₦15,000 balance. On 8 September 2026, a second fictional customer completed registration, NIN onboarding, verification, and provider account creation entirely through this application. The provider returned the required ₦15,000 opening balance.
 
 ## Link an account created directly in provider Swagger
 
