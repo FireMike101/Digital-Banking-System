@@ -94,6 +94,27 @@ export async function getProviderAccountName(accountNumber) {
   };
 }
 
+export async function sendProviderTransfer(from, to, amount) {
+  const token = await getProviderToken();
+  let result;
+  try {
+    result = await request('/api/transfer', 'POST', { from, to, amount }, token);
+  } catch (error) {
+    if (error.providerStatus === 400) {
+      throw providerError(400, 'Transfer was rejected. Check the amount, balance, and recipient details.');
+    }
+    if (error.providerStatus === 404) throw providerError(404, 'The sender or recipient account was not found.');
+    throw error;
+  }
+
+  const transaction = result?.transaction ?? result?.data?.transaction ?? result?.data ?? result;
+  const providerReference = transaction?.reference ?? transaction?.ref;
+  if (typeof providerReference !== 'string' || !providerReference.trim()) {
+    throw providerError(502, 'NibssByPhoenix did not return a transaction reference.');
+  }
+  return providerReference;
+}
+
 export async function findProviderAccount(accountNumber) {
   const token = await getProviderToken();
   const result = await request('/api/accounts', 'GET', undefined, token);

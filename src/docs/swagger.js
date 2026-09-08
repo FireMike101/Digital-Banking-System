@@ -48,6 +48,29 @@ export const swaggerDocument = {
     },
   },
   paths: {
+    '/api/transactions/transfer': {
+      post: {
+        tags: ['Transactions'], summary: 'Transfer money to a confirmed provider account', security: [{ bearerAuth: [] }],
+        description: 'The sender is taken from the logged-in customer. The backend performs name enquiry and a live balance check before transferring. It labels the transfer as intra-bank or inter-bank from the recipient bank code.',
+        requestBody: { required: true, content: { 'application/json': { schema: {
+          type: 'object', additionalProperties: false, required: ['recipientAccount', 'amount'],
+          properties: {
+            recipientAccount: { type: 'string', pattern: '^\\d{10}$', example: '8700000000' },
+            amount: { type: 'number', exclusiveMinimum: 0, multipleOf: 0.01, example: 1000 },
+            narration: { type: 'string', maxLength: 100, example: 'Test transfer' },
+          },
+        } } } },
+        responses: {
+          201: { description: 'Transfer confirmed and saved with local and provider references.' },
+          400: errorResponse('Invalid input, insufficient funds, self-transfer, or provider rejection.'),
+          401: errorResponse('Customer login required.'), 403: errorResponse('Active provider account required.'),
+          404: errorResponse('Sender or recipient account not found.'),
+          502: errorResponse('Provider result is invalid or uncertain. Use the returned local reference for status checks.'),
+          503: errorResponse('Bank credentials or database unavailable.'),
+          504: errorResponse('Provider timeout. Use the returned local reference for status checks.'),
+        },
+      },
+    },
     '/api/accounts/name-enquiry/{accountNumber}': {
       get: {
         tags: ['Accounts'], summary: 'Confirm a recipient account name', security: [{ bearerAuth: [] }],

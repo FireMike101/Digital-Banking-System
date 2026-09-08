@@ -6,6 +6,7 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerDocument } from './docs/swagger.js';
 import { onboardingRouter } from './routes/onboarding.js';
 import { accountRouter } from './routes/accounts.js';
+import { transactionRouter } from './routes/transactions.js';
 
 export const app = express();
 
@@ -34,6 +35,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/onboarding', onboardingRouter);
 app.use('/api/accounts', accountRouter);
+app.use('/api/transactions', transactionRouter);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found.' });
