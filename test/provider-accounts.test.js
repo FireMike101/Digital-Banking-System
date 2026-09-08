@@ -69,16 +69,10 @@ test('provider account flow uses authenticated ownership and never simulates pro
     record = { ...data, _id: 'account', currency: 'NGN', save: async () => {} };
     return record;
   });
-  t.mock.method(Account, 'findOneAndUpdate', async (filter, update) => {
-    assert.equal(filter.mode, 'local-test');
-    if (record.mode !== 'local-test') return null;
-    Object.assign(record, update.$set);
-    return record;
-  });
   const server = app.listen(0, '127.0.0.1');
   t.after(() => new Promise((resolve) => server.close(resolve)));
   await new Promise((resolve) => server.once('listening', resolve));
-  async function request(path = '/provider', method = 'POST', body) {
+  async function request(path = '', method = 'POST', body) {
     const response = await realFetch(`http://127.0.0.1:${server.address().port}/api/accounts${path}`, {
       method, headers: { Authorization: `Bearer ${'a'.repeat(64)}`, 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -87,6 +81,8 @@ test('provider account flow uses authenticated ownership and never simulates pro
   }
 
   await t.test('requires verification and configured bank credentials', async () => {
+    assert.equal((await request('', 'POST', { balance: 90000 })).status, 400);
+    assert.equal((await request('', 'POST', null)).status, 400);
     assert.equal((await request()).status, 403);
     verified = true;
     delete process.env.NIBSS_API_KEY;
@@ -113,15 +109,6 @@ test('provider account flow uses authenticated ownership and never simulates pro
     assert.equal(failed.status, 502);
     assert.equal(failed.body.balance, undefined);
     balanceStatus = 200;
-  });
-  await t.test('local account replacement is explicit and uses the real returned amount', async () => {
-    record.mode = 'local-test';
-    assert.equal((await request()).status, 409);
-    openingBalance = 100;
-    const replaced = await request('/provider', 'POST', { replaceLocalTestAccount: true });
-    assert.equal(replaced.status, 201);
-    assert.equal(replaced.body.account.balance, 100);
-    assert.equal(replaced.body.openingFundingMatchesRequirement, false);
   });
   await t.test('HTTP 500 preserves pending state and blocks another attempt', async () => {
     record = undefined;

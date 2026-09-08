@@ -74,10 +74,10 @@ export const swaggerDocument = {
           balance: {
             type: "number",
             example: 15000,
-            description: "Simulated balance in naira.",
+            description: "Live provider balance in naira.",
           },
           currency: { type: "string", enum: ["NGN"] },
-          mode: { type: "string", enum: ["local-test", "nibss"] },
+          mode: { type: "string", enum: ["nibss"] },
           status: { type: "string", enum: ["pending", "active"] },
           openingBalance: {
             type: "number",
@@ -266,29 +266,18 @@ export const swaggerDocument = {
         },
       },
     },
-    "/api/accounts/provider": {
+    "/api/accounts": {
       post: {
-        tags: ["Provider accounts"],
-        summary: "Create an account with NibssByPhoenix",
+        tags: ["Accounts"],
+        summary: "Create your bank account",
         security: [{ bearerAuth: [] }],
         description:
-          "Requires verified onboarding. Bank credentials are read by the server, never supplied here. If you already have a local test account, explicitly replace it using the optional flag. Uncertain creation stays pending; do not retry it automatically.",
+          "Requires completed BVN/NIN verification. Send an empty JSON object. The server creates the account with NibssByPhoenix, which provides the opening ₦15,000 balance. Uncertain creation remains pending and must not be retried automatically.",
         requestBody: {
           required: false,
           content: {
             "application/json": {
-              schema: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  replaceLocalTestAccount: {
-                    type: "boolean",
-                    default: false,
-                    description:
-                      "Replaces your local account and simulated balance. No local funds are transferred to the provider.",
-                  },
-                },
-              },
+              schema: { type: "object", additionalProperties: false },
             },
           },
         },
@@ -296,53 +285,20 @@ export const swaggerDocument = {
           201: jsonResponse("Provider account confirmed.", {
             type: "object",
             properties: {
-              success: { type: "boolean" },
+              success: { type: "boolean", example: true },
               account: { $ref: "#/components/schemas/Account" },
-              openingFundingMatchesRequirement: {
-                type: "boolean",
-                description:
-                  "True only if the provider returned an opening balance of ₦15,000.",
-              },
+              openingFundingMatchesRequirement: { type: "boolean" },
             },
           }),
-          400: errorResponse("Invalid input."),
+          400: errorResponse("Request body must be an empty object."),
           401: errorResponse("Customer login required."),
           403: errorResponse("Identity verification required."),
           409: errorResponse("Account exists or creation is pending."),
           413: errorResponse("Body exceeds 16 KB."),
           500: errorResponse("Unexpected database error."),
-          502: errorResponse(
-            "Provider rejected the operation or returned an incomplete response.",
-          ),
-          503: errorResponse(
-            "Bank credentials not configured or database unavailable.",
-          ),
+          502: errorResponse("Provider rejected the operation or returned an incomplete response."),
+          503: errorResponse("Bank credentials not configured or database unavailable."),
           504: errorResponse("Provider could not be reached."),
-        },
-      },
-    },
-    "/api/accounts": {
-      post: {
-        tags: ["Local test accounts"],
-        summary: "Create your one local test account",
-        security: [{ bearerAuth: [] }],
-        description:
-          "Requires completed BVN/NIN verification. Send no body. Starts with a simulated ₦15,000 balance in MongoDB. Does not call NibssByPhoenix or create an external account.",
-        responses: {
-          201: jsonResponse("Local account created.", {
-            type: "object",
-            properties: {
-              success: { type: "boolean", example: true },
-              account: { $ref: "#/components/schemas/Account" },
-            },
-          }),
-          400: errorResponse("Request body must be empty."),
-          401: errorResponse("Login required."),
-          403: errorResponse("Complete identity verification first."),
-          409: errorResponse("You already have an account."),
-          413: errorResponse("Body exceeds 16 KB."),
-          500: errorResponse("Unexpected error."),
-          503: errorResponse("Service temporarily unavailable."),
         },
       },
     },

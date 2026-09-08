@@ -18,11 +18,10 @@ const accountSchema = new mongoose.Schema(
       validate: Number.isSafeInteger,
     },
     currency: { type: String, default: "NGN", enum: ["NGN"] },
-    // Keep local simulations clearly separate from accounts returned by NibssByPhoenix.
     mode: {
       type: String,
-      default: "local-test",
-      enum: ["local-test", "nibss"],
+      default: "nibss",
+      enum: ["nibss"],
     },
     status: { type: String, default: "active", enum: ["pending", "active"] },
     openingBalanceKobo: {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { authenticate } from "../middleware/authenticate.js";
 import { Account } from "../models/account.js";
 import { Onboarding } from "../models/onboarding.js";
@@ -34,19 +34,19 @@ function accountDetails(account) {
   };
 }
 
-accountRouter.post("/provider", async (req, res) => {
-  const body = req.body ?? {};
+accountRouter.post("/", async (req, res) => {
   if (
-    Array.isArray(body) ||
-    Object.keys(body).some((key) => key !== "replaceLocalTestAccount") ||
-    (body.replaceLocalTestAccount !== undefined &&
-      typeof body.replaceLocalTestAccount !== "boolean")
+    req.body !== undefined &&
+    (typeof req.body !== "object" ||
+      req.body === null ||
+      Array.isArray(req.body) ||
+      Object.keys(req.body).length > 0)
   ) {
     return res
       .status(400)
       .json({
         success: false,
-        message: "Only replaceLocalTestAccount (true or false) is allowed.",
+        message: "Send an empty JSON object when creating an account.",
       });
   }
   const onboarding = await Onboarding.findOne({ customerId: req.customer._id });
@@ -62,18 +62,12 @@ accountRouter.post("/provider", async (req, res) => {
       });
   }
   const existing = await Account.findOne({ customerId: req.customer._id });
-  if (
-    existing &&
-    (existing.mode !== "local-test" || !body.replaceLocalTestAccount)
-  ) {
+  if (existing) {
     return res
       .status(409)
       .json({
         success: false,
-        message:
-          existing.mode === "local-test"
-            ? "A local account exists. Send replaceLocalTestAccount: true to replace its simulated balance with a provider account."
-            : "A provider account is active or awaiting confirmation. Do not create another.",
+        message: "You already have an account or an account request is pending.",
       });
   }
   let token;
@@ -96,20 +90,7 @@ accountRouter.post("/provider", async (req, res) => {
   };
   try {
     // Reserve the same customer's account before the external call to prevent duplicate creation.
-    account = existing
-      ? await Account.findOneAndUpdate(
-          { _id: existing._id, mode: "local-test" },
-          { $set: pending },
-          { new: true },
-        )
-      : await Account.create({ customerId: req.customer._id, ...pending });
-    if (!account)
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message: "Another account request is already running.",
-        });
+    account = await Account.create({ customerId: req.customer._id, ...pending });
   } catch (error) {
     if (error.code === 11000)
       return res
@@ -145,61 +126,6 @@ accountRouter.post("/provider", async (req, res) => {
       success: true,
       account: accountDetails(account),
       openingFundingMatchesRequirement: account.openingBalanceKobo === 1500000,
-    });
-});
-
-accountRouter.post("/", async (req, res) => {
-  // The customer cannot choose an owner, balance or verification status in this request.
-  if (
-    req.body !== undefined &&
-    (!req.body || Array.isArray(req.body) || Object.keys(req.body).length > 0)
-  ) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Send no body, or an empty JSON object.",
-      });
-  }
-  const onboarding = await Onboarding.findOne({ customerId: req.customer._id });
-  if (
-    req.customer.onboardingStatus !== "verified" ||
-    onboarding?.status !== "verified"
-  ) {
-    return res
-      .status(403)
-      .json({
-        success: false,
-        message: "Complete BVN or NIN verification before creating an account.",
-      });
-  }
-
-  // A random number can rarely collide. Retry only that case, not duplicate customers.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const account = await Account.create({
-        customerId: req.customer._id,
-        accountNumber: String(randomInt(1000000000, 10000000000)),
-        accountName: `${onboarding.firstName} ${onboarding.lastName}`,
-      });
-      return res
-        .status(201)
-        .json({ success: true, account: accountDetails(account) });
-    } catch (error) {
-      if (error.code === 11000 && error.keyPattern?.customerId) {
-        return res
-          .status(409)
-          .json({ success: false, message: "You already have an account." });
-      }
-      if (error.code === 11000 && error.keyPattern?.accountNumber) continue;
-      throw error;
-    }
-  }
-  res
-    .status(503)
-    .json({
-      success: false,
-      message: "Could not generate an account number. Please try again.",
     });
 });
 

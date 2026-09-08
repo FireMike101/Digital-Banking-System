@@ -7,11 +7,10 @@ The server uses `NIBSS_API_KEY` and `NIBSS_API_SECRET` from your environment to 
 1. Restart with `npm run dev` after changing environment variables.
 2. Open http://localhost:3000/api/docs/ and authorize with your customer login token.
 3. Complete test BVN/NIN verification for that customer.
-4. Call `POST /api/accounts/provider` with no body to create a provider account.
-5. If the customer already has a local test account, explicitly replace it by sending `{ "replaceLocalTestAccount": true }`. Its simulated balance does not transfer to NibssByPhoenix.
-6. Use `GET /api/accounts/me` and `GET /api/accounts/balance` to read the provider balance. No stale local balance is returned when the provider fails.
+4. Call `POST /api/accounts` with an empty JSON object to create the provider account.
+5. Use `GET /api/accounts/me` and `GET /api/accounts/balance` to read the provider balance. No stale local balance is returned when the provider fails.
 
-The old `POST /api/accounts` remains a local simulation and is labelled that way in Swagger. One customer can have only one account record across both modes.
+One customer can have only one account. The application does not create simulated local accounts.
 
 Provider creation reserves that customer's account before sending the request. Failed or uncertain responses leave it pending and block another creation request. `/api/accounts/me` shows this status. Provider support or reconciliation is required to resolve a pending attempt; there is no automatic reset endpoint.
 
@@ -27,7 +26,7 @@ The user then confirmed successful account creation directly in provider Swagger
 
 An operator can run `npm run account:link` and enter the existing **app customer email** and provider account number. This command verifies that the account is returned by the configured bank, validates its identity, and reads its balance. It links the account, onboarding record and customer verification status in one database transaction. It does not create a new provider account or credit funds.
 
-This operator command can replace a local simulation or reconcile a pending account. It refuses to replace a different active provider account or take an account/identity already linked to another customer. It is deliberately not exposed as a public Swagger endpoint: knowing someone's account number must not let another customer claim their account.
+This operator command can reconcile a pending account. It refuses to replace a different active provider account or take an account or identity already linked to another customer. It is deliberately not exposed as a public Swagger endpoint: knowing someone's account number must not let another customer claim their account.
 
 After linking, log in normally and use `/api/auth/me`, `/api/onboarding`, `/api/accounts/me` and `/api/accounts/balance` in our Swagger. No customer password is changed by linking.
 
