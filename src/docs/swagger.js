@@ -28,6 +28,18 @@ export const swaggerDocument = {
       bearerAuth: { type: 'http', scheme: 'bearer', description: 'Paste the token from login, without the word Bearer. Tokens expire after one hour.' },
     },
     schemas: {
+      Transaction: {
+        type: 'object', properties: {
+          reference: { type: 'string', format: 'uuid', description: 'Reference used with this API.' },
+          providerReference: { type: 'string' }, sourceAccount: { type: 'string' },
+          recipientAccount: { type: 'string' }, recipientName: { type: 'string' },
+          recipientBankCode: { type: 'string' },
+          transferType: { type: 'string', enum: ['intra-bank', 'inter-bank'] },
+          amount: { type: 'number' }, narration: { type: 'string' },
+          status: { type: 'string', enum: ['pending', 'successful', 'failed'] },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
       Account: {
         type: 'object', properties: {
           accountNumber: { type: 'string', example: '1234567890' },
@@ -48,6 +60,40 @@ export const swaggerDocument = {
     },
   },
   paths: {
+    '/api/transactions/history': {
+      get: {
+        tags: ['Transactions'], summary: 'View your own transaction history', security: [{ bearerAuth: [] }],
+        description: 'Returns up to 100 of the logged-in customer’s transactions, newest first. Customer IDs from query parameters are ignored.',
+        responses: {
+          200: jsonResponse('Private transaction history.', { type: 'object', properties: {
+            success: { type: 'boolean', example: true }, count: { type: 'integer' },
+            transactions: { type: 'array', items: { $ref: '#/components/schemas/Transaction' } },
+          } }),
+          401: errorResponse('Customer login required.'), 500: errorResponse('Unexpected database error.'),
+          503: errorResponse('Database unavailable.'),
+        },
+      },
+    },
+    '/api/transactions/status/{reference}': {
+      get: {
+        tags: ['Transactions'], summary: 'Check your transaction status', security: [{ bearerAuth: [] }],
+        description: 'Use the local UUID returned by the transfer endpoint. The transaction must belong to the logged-in customer. If a provider reference exists, the backend refreshes the status from NibssByPhoenix.',
+        parameters: [{
+          in: 'path', name: 'reference', required: true,
+          schema: { type: 'string', format: 'uuid' },
+        }],
+        responses: {
+          200: jsonResponse('Transaction status.', { type: 'object', properties: {
+            success: { type: 'boolean', example: true }, message: { type: 'string' },
+            transaction: { $ref: '#/components/schemas/Transaction' },
+          } }),
+          400: errorResponse('Invalid local transaction reference.'), 401: errorResponse('Customer login required.'),
+          404: errorResponse('Local or provider transaction not found.'),
+          502: errorResponse('Provider returned an invalid response.'),
+          503: errorResponse('Bank credentials or database unavailable.'), 504: errorResponse('Provider timeout.'),
+        },
+      },
+    },
     '/api/transactions/transfer': {
       post: {
         tags: ['Transactions'], summary: 'Transfer money to a confirmed provider account', security: [{ bearerAuth: [] }],

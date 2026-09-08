@@ -115,6 +115,26 @@ export async function sendProviderTransfer(from, to, amount) {
   return providerReference;
 }
 
+export async function getProviderTransactionStatus(reference) {
+  const token = await getProviderToken();
+  let result;
+  try {
+    result = await request(`/api/transaction/${encodeURIComponent(reference)}`, 'GET', undefined, token);
+  } catch (error) {
+    if (error.providerStatus === 404) throw providerError(404, 'Provider transaction was not found.');
+    throw error;
+  }
+  const transaction = result?.transaction ?? result?.data?.transaction ?? result?.data ?? result;
+  if (typeof transaction?.status !== 'string') {
+    throw providerError(502, 'NibssByPhoenix returned an incomplete transaction status.');
+  }
+  const status = transaction.status.toLowerCase();
+  if (['success', 'successful', 'completed'].includes(status)) return 'successful';
+  if (['failed', 'failure', 'reversed'].includes(status)) return 'failed';
+  if (['pending', 'processing'].includes(status)) return 'pending';
+  throw providerError(502, 'NibssByPhoenix returned an unknown transaction status.');
+}
+
 export async function findProviderAccount(accountNumber) {
   const token = await getProviderToken();
   const result = await request('/api/accounts', 'GET', undefined, token);

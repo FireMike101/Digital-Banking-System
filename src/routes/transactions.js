@@ -3,13 +3,64 @@ import { randomUUID } from 'node:crypto';
 import { authenticate } from '../middleware/authenticate.js';
 import { Account } from '../models/account.js';
 import { Transaction } from '../models/transaction.js';
-import { getProviderAccountName, getProviderBalance, sendProviderTransfer } from '../services/provider-banking.js';
+import { getProviderAccountName, getProviderBalance, sendProviderTransfer, getProviderTransactionStatus } from '../services/provider-banking.js';
 
 export const transactionRouter = Router();
 transactionRouter.use(authenticate);
 transactionRouter.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
+});
+
+function transactionDetails(transaction) {
+  return {
+    reference: transaction.reference,
+    providerReference: transaction.providerReference,
+    sourceAccount: transaction.sourceAccount,
+    recipientAccount: transaction.recipientAccount,
+    recipientName: transaction.recipientName,
+    recipientBankCode: transaction.recipientBankCode,
+    transferType: transaction.transferType,
+    amount: transaction.amountKobo / 100,
+    narration: transaction.narration,
+    status: transaction.status,
+    createdAt: transaction.createdAt,
+  };
+}
+
+transactionRouter.get('/history', async (req, res) => {
+  // The customer ID always comes from the login token.
+  const transactions = await Transaction.find({ customerId: req.customer._id })
+    .sort({ createdAt: -1 })
+    .limit(100);
+  res.json({ success: true, count: transactions.length, transactions: transactions.map(transactionDetails) });
+});
+
+transactionRouter.get('/status/:reference', async (req, res) => {
+  const { reference } = req.params;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(reference)) {
+    return res.status(400).json({ success: false, message: 'Enter a valid transaction reference.' });
+  }
+  // Including customerId prevents customers from checking another customer's transaction.
+  const transaction = await Transaction.findOne({ reference, customerId: req.customer._id });
+  if (!transaction) {
+    return res.status(404).json({ success: false, message: 'Transaction not found.' });
+  }
+
+  if (transaction.providerReference) {
+    try {
+      transaction.status = await getProviderTransactionStatus(transaction.providerReference);
+      await transaction.save();
+    } catch (error) {
+      return res.status(error.status ?? 502).json({ success: false, message: error.message });
+    }
+  }
+  res.json({
+    success: true,
+    transaction: transactionDetails(transaction),
+    message: transaction.providerReference ? 'Latest provider status returned.'
+      : 'No provider reference was returned, so this transaction remains pending for manual review.',
+  });
 });
 
 transactionRouter.post('/transfer', async (req, res) => {
@@ -87,16 +138,6 @@ transactionRouter.post('/transfer', async (req, res) => {
 
   res.status(201).json({
     success: true,
-    transaction: {
-      reference: transaction.reference,
-      providerReference: transaction.providerReference,
-      recipientAccount: transaction.recipientAccount,
-      recipientName: transaction.recipientName,
-      recipientBankCode: transaction.recipientBankCode,
-      transferType: transaction.transferType,
-      amount: transaction.amountKobo / 100,
-      narration: transaction.narration,
-      status: transaction.status,
-    },
+    transaction: transactionDetails(transaction),
   });
 });
