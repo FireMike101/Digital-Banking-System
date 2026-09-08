@@ -5,7 +5,21 @@ import { Account } from '../src/models/account.js';
 import { Customer } from '../src/models/customer.js';
 import { Session } from '../src/models/session.js';
 import { Onboarding } from '../src/models/onboarding.js';
-import { toKobo } from '../src/services/provider-banking.js';
+import { toKobo, createProviderAccount } from '../src/services/provider-banking.js';
+
+test('provider account requests use lowercase identity types', async (t) => {
+  let sentBody;
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    sentBody = JSON.parse(options.body);
+    return Response.json({ accountNumber: '1234567890', accountName: 'Test Customer', balance: 15000 });
+  });
+  for (const type of ['BVN', 'NIN']) {
+    await createProviderAccount({ type, testId: '12345678901', dob: '1995-06-15' }, 'fake-token');
+    assert.equal(sentBody.kycType, type === 'BVN' ? 'bvn' : 'nin');
+    assert.equal(sentBody.kycID, '12345678901');
+    assert.equal(sentBody.dob, '1995-06-15');
+  }
+});
 
 test('provider balance validation rejects invalid money', () => {
   assert.equal(toKobo(15000), 1500000);
@@ -38,7 +52,7 @@ test('provider account flow uses authenticated ownership and never simulates pro
     assert.equal(options.headers.Authorization, 'Bearer private-bank-token');
     if (url.endsWith('/api/account/create')) {
       createCalls++;
-      assert.deepEqual(JSON.parse(options.body), { kycType: 'BVN', kycID: '12345678901', dob: '1995-06-15' });
+      assert.deepEqual(JSON.parse(options.body), { kycType: 'bvn', kycID: '12345678901', dob: '1995-06-15' });
       return Response.json(malformed ? {} : { accountNumber: '1234567890', accountName: 'Test Customer', balance: openingBalance }, { status: createStatus });
     }
     assert.ok(url.endsWith('/api/account/balance/1234567890'));

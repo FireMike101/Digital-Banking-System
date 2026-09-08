@@ -123,3 +123,22 @@ Duplicate creation requests return 409. A definite provider rejection removes th
 The integration follows [NibssByPhoenix Swagger](https://nibssbyphoenix.onrender.com/api/docs/): `/api/insertBvn` returns 201, `/api/insertNin` returns 200, and `/api/validateBvn` and `/api/validateNin` return 200 on success. Its schema does not define response bodies, so this version uses those documented status codes. These identity routes are documented without authentication. Bank onboarding and credentials are a separate step before account creation.
 
 Onboarding tests mock the provider and MongoDB. They never submit identities to the shared provider, read environment files or access Atlas. A live provider integration check remains to be done with your fictional test customer.
+
+## Before account creation: register the bank
+
+This setup is separate from registering a customer. Run this once for your bank:
+
+```bash
+npm run bank:register
+```
+
+Enter the bank name and the email address where you want the credentials delivered. The command sends them to NibssByPhoenix's documented `POST /api/fintech/onboard` endpoint. It does not read `.env`, require MongoDB, or print the provider response body.
+
+Check your inbox and spam folder for the API key and API secret. If the command times out, check for the email before repeating registration. Do not share the credentials in chat or commit them to Git. When received, put them in your local `.env` using these variable names for the upcoming account integration:
+
+```text
+NIBSS_API_KEY=your_api_key
+NIBSS_API_SECRET=your_api_secret
+```
+
+These variables will be used in the next account-creation step; the current customer identity endpoints do not use them yet. Bank registration is intentionally a terminal command, not a public customer API, so it is not an endpoint in our Swagger documentation.

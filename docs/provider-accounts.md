@@ -19,8 +19,16 @@ We do not add ₦15,000 locally to provider accounts. `openingFundingMatchesRequ
 
 ## Validation and current limitation
 
-On 7 September 2026, live authentication succeeded. One fictional Integration Test BVN was created and verified. Provider account creation then returned HTTP 500; a read-only account-list check returned zero accounts. The failed creation was not retried. This probe is separate from application customer records.
+On 7 September 2026, live authentication succeeded. One fictional Integration Test BVN was created and verified. Provider account creation with uppercase `kycType: "BVN"` returned HTTP 500; a read-only account-list check returned zero accounts. The coordinator subsequently clarified that account creation requires lowercase `"bvn"`. The adapter now converts the stored identity type to lowercase (`bvn` or `nin`) before sending it. Our earlier attribution of the failure to the provider was premature. This probe is separate from application customer records.
 
-Therefore provider account creation, balance response shapes and opening funding are **not yet confirmed live**. The provider's Swagger omits response-body schemas. The adapter currently accepts account fields `accountNumber`, `accountName`, and numeric `balance`, directly or inside an `account`/`data` envelope. Missing or invalid fields cause a safe error and keep creation pending. Mock tests validate these expected shapes, not a successful live provider response.
+The user then confirmed successful account creation directly in provider Swagger with lowercase `bvn`, an `account` response envelope, and a ₦15,000 balance. This matches the adapter. Full creation through our app still needs its own end-to-end test.
+
+## Link an account created directly in provider Swagger
+
+An operator can run `npm run account:link` and enter the existing **app customer email** and provider account number. This command verifies that the account is returned by the configured bank, validates its identity, and reads its balance. It links the account, onboarding record and customer verification status in one database transaction. It does not create a new provider account or credit funds.
+
+This operator command can replace a local simulation or reconcile a pending account. It refuses to replace a different active provider account or take an account/identity already linked to another customer. It is deliberately not exposed as a public Swagger endpoint: knowing someone's account number must not let another customer claim their account.
+
+After linking, log in normally and use `/api/auth/me`, `/api/onboarding`, `/api/accounts/me` and `/api/accounts/balance` in our Swagger. No customer password is changed by linking.
 
 Source: [NibssByPhoenix Swagger](https://nibssbyphoenix.onrender.com/api/docs/).
