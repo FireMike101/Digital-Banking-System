@@ -7,7 +7,6 @@
   "scripts": {
     "dev": "node --watch --env-file=.env src/server.js",
     "start": "node --env-file=.env src/server.js",
-    "test": "node --test",
     "bank:register": "node scripts/register-bank.js",
     "account:link": "node --env-file=.env scripts/link-provider-account.js"
   },

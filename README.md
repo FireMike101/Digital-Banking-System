@@ -12,7 +12,6 @@ The API supports customer registration, login, identity verification, one funded
 - Mongoose
 - NibssByPhoenix API
 - Swagger UI
-- Node.js test runner
 
 ## Main features
 
@@ -178,17 +177,9 @@ The application handles these cases:
 
 An uncertain account creation remains `pending` to prevent accidentally creating a second account. An uncertain transfer also remains `pending` so the customer checks its status instead of sending the money twice.
 
-## Testing
+## Verified provider operations
 
-Run the automated tests with:
-
-```bash
-npm test
-```
-
-The tests mock MongoDB and NibssByPhoenix, so they do not read `.env`, use real credentials or move money.
-
-Live tests with fictional customers have also confirmed:
+Manual checks with fictional customers confirmed:
 
 - BVN and NIN creation and verification
 - Account creation with the required ₦15,000 opening balance
@@ -212,8 +203,7 @@ src/
   app.js         Express application
   server.js      MongoDB connection and server startup
 scripts/         One-time bank registration and account-linking tools
-test/            Automated tests
-docs/            Extra implementation and testing notes
+docs/            Extra implementation notes
 ```
 
 ## Useful commands
@@ -222,7 +212,6 @@ docs/            Extra implementation and testing notes
 | --- | --- |
 | `npm run dev` | Start with automatic restart after file changes |
 | `npm start` | Start normally |
-| `npm test` | Run the automated tests |
 | `npm run bank:register` | Register a bank with NibssByPhoenix |
 | `npm run account:link` | Safely link an account created directly in provider Swagger |
 
