@@ -21,7 +21,9 @@ async function request(path, method, body, token) {
   }
   if (!response.ok) {
     // Keep provider messages private: they can include internal information.
-    throw providerError(502, `NibssByPhoenix returned HTTP ${response.status}.`);
+    const error = providerError(502, `NibssByPhoenix returned HTTP ${response.status}.`);
+    error.providerStatus = response.status;
+    throw error;
   }
   try {
     return await response.json();
@@ -70,6 +72,26 @@ export async function getProviderBalance(accountNumber) {
   const result = await request(`/api/account/balance/${encodeURIComponent(accountNumber)}`, 'GET', undefined, token);
   const data = result?.data ?? result;
   return toKobo(data?.balance);
+}
+
+export async function getProviderAccountName(accountNumber) {
+  const token = await getProviderToken();
+  let result;
+  try {
+    result = await request(`/api/account/name-enquiry/${encodeURIComponent(accountNumber)}`, 'GET', undefined, token);
+  } catch (error) {
+    if (error.providerStatus === 404) throw providerError(404, 'Recipient account was not found.');
+    throw error;
+  }
+  if (result?.accountNumber !== accountNumber || typeof result.accountName !== 'string' ||
+      !result.accountName.trim() || typeof result.bankCode !== 'string' || !/^\d{3}$/.test(result.bankCode)) {
+    throw providerError(502, 'NibssByPhoenix returned incomplete account details.');
+  }
+  return {
+    accountNumber: result.accountNumber,
+    accountName: result.accountName,
+    bankCode: result.bankCode,
+  };
 }
 
 export async function findProviderAccount(accountNumber) {

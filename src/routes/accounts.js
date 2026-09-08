@@ -3,7 +3,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import { authenticate } from '../middleware/authenticate.js';
 import { Account } from '../models/account.js';
 import { Onboarding } from '../models/onboarding.js';
-import { createProviderAccount, getProviderToken, getProviderBalance } from '../services/provider-banking.js';
+import { createProviderAccount, getProviderToken, getProviderBalance, getProviderAccountName } from '../services/provider-banking.js';
 
 export const accountRouter = Router();
 accountRouter.use(authenticate);
@@ -131,4 +131,17 @@ accountRouter.get('/balance', async (req, res) => {
     catch (error) { return res.status(error.status ?? 502).json({ success: false, message: error.message }); }
   }
   res.json({ success: true, balance: account.balanceKobo / 100, currency: account.currency, mode: account.mode });
+});
+
+accountRouter.get('/name-enquiry/:accountNumber', async (req, res) => {
+  const { accountNumber } = req.params;
+  if (!/^\d{10}$/.test(accountNumber)) {
+    return res.status(400).json({ success: false, message: 'Account number must contain exactly 10 digits.' });
+  }
+  try {
+    const account = await getProviderAccountName(accountNumber);
+    res.json({ success: true, account });
+  } catch (error) {
+    res.status(error.status ?? 502).json({ success: false, message: error.message });
+  }
 });

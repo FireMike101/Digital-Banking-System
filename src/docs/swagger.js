@@ -48,6 +48,30 @@ export const swaggerDocument = {
     },
   },
   paths: {
+    '/api/accounts/name-enquiry/{accountNumber}': {
+      get: {
+        tags: ['Accounts'], summary: 'Confirm a recipient account name', security: [{ bearerAuth: [] }],
+        description: 'Use this before a transfer. The backend sends the account number to NibssByPhoenix and returns the confirmed account name and bank code.',
+        parameters: [{
+          in: 'path', name: 'accountNumber', required: true,
+          schema: { type: 'string', pattern: '^\\d{10}$', example: '8708090496' },
+        }],
+        responses: {
+          200: jsonResponse('Recipient details confirmed.', { type: 'object', properties: {
+            success: { type: 'boolean', example: true },
+            account: { type: 'object', properties: {
+              accountNumber: { type: 'string', example: '8708090496' },
+              accountName: { type: 'string', example: 'Micheal Fire' },
+              bankCode: { type: 'string', example: '870' },
+            } },
+          } }),
+          400: errorResponse('Account number must contain exactly 10 digits.'),
+          401: errorResponse('Customer login required.'), 404: errorResponse('Recipient account not found.'),
+          502: errorResponse('Provider error or incomplete response.'),
+          503: errorResponse('Bank credentials not configured.'), 504: errorResponse('Provider timeout.'),
+        },
+      },
+    },
     '/api/accounts/provider': {
       post: {
         tags: ['Provider accounts'], summary: 'Create an account with NibssByPhoenix', security: [{ bearerAuth: [] }],
