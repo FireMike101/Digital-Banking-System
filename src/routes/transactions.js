@@ -12,7 +12,7 @@ transactionRouter.use((req, res, next) => {
   next();
 });
 
-function transactionDetails(transaction) {
+function transactionDetails(transaction, accountNumber) {
   return {
     reference: transaction.reference,
     providerReference: transaction.providerReference,
@@ -21,6 +21,7 @@ function transactionDetails(transaction) {
     recipientName: transaction.recipientName,
     recipientBankCode: transaction.recipientBankCode,
     transferType: transaction.transferType,
+    direction: transaction.recipientAccount === accountNumber ? 'incoming' : 'outgoing',
     amount: transaction.amountKobo / 100,
     narration: transaction.narration,
     status: transaction.status,
@@ -29,11 +30,22 @@ function transactionDetails(transaction) {
 }
 
 transactionRouter.get('/history', async (req, res) => {
-  // The customer ID always comes from the login token.
-  const transactions = await Transaction.find({ customerId: req.customer._id })
+  const account = await Account.findOne({ customerId: req.customer._id });
+  const filters = [{ customerId: req.customer._id }];
+
+  // Successful transfers sent to this account are part of its private history too.
+  if (account?.accountNumber) {
+    filters.push({ recipientAccount: account.accountNumber, status: 'successful' });
+  }
+
+  const transactions = await Transaction.find({ $or: filters })
     .sort({ createdAt: -1 })
     .limit(100);
-  res.json({ success: true, count: transactions.length, transactions: transactions.map(transactionDetails) });
+  res.json({
+    success: true,
+    count: transactions.length,
+    transactions: transactions.map((transaction) => transactionDetails(transaction, account?.accountNumber)),
+  });
 });
 
 transactionRouter.get('/status/:reference', async (req, res) => {
@@ -57,7 +69,7 @@ transactionRouter.get('/status/:reference', async (req, res) => {
   }
   res.json({
     success: true,
-    transaction: transactionDetails(transaction),
+    transaction: transactionDetails(transaction, transaction.sourceAccount),
     message: transaction.providerReference ? 'Latest provider status returned.'
       : 'No provider reference was returned, so this transaction remains pending for manual review.',
   });
@@ -138,6 +150,6 @@ transactionRouter.post('/transfer', async (req, res) => {
 
   res.status(201).json({
     success: true,
-    transaction: transactionDetails(transaction),
+    transaction: transactionDetails(transaction, sender.accountNumber),
   });
 });

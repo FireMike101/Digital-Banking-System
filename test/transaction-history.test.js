@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { app } from '../src/app.js';
 import { Customer } from '../src/models/customer.js';
 import { Session } from '../src/models/session.js';
+import { Account } from '../src/models/account.js';
 import { Transaction } from '../src/models/transaction.js';
 import { getProviderTransactionStatus } from '../src/services/provider-banking.js';
 
@@ -57,6 +58,14 @@ test('history and status only return the logged-in customer’s transactions', a
   const pendingWithoutProviderReference = {
     ...ownerTransaction, reference: '33333333-3333-4333-8333-333333333333', providerReference: undefined,
   };
+  const incomingTransaction = {
+    ...ownerTransaction,
+    customerId: 'another-customer',
+    reference: '44444444-4444-4444-8444-444444444444',
+    sourceAccount: '8702222222',
+    recipientAccount: '8708090496',
+    status: 'successful',
+  };
   let statusResponse = 'completed';
   let providerStatusCalls = 0;
   const realFetch = globalThis.fetch;
@@ -68,13 +77,20 @@ test('history and status only return the logged-in customer’s transactions', a
   });
   t.mock.method(Session, 'findOne', async () => ({ customerId: 'owner', expiresAt: new Date(Date.now() + 60000) }));
   t.mock.method(Customer, 'findById', async () => ({ _id: 'owner' }));
+  t.mock.method(Account, 'findOne', async ({ customerId }) => {
+    assert.equal(customerId, 'owner');
+    return { accountNumber: '8708090496' };
+  });
   t.mock.method(Transaction, 'find', (filter) => {
-    assert.deepEqual(filter, { customerId: 'owner' });
+    assert.deepEqual(filter, { $or: [
+      { customerId: 'owner' },
+      { recipientAccount: '8708090496', status: 'successful' },
+    ] });
     return { sort: (sort) => {
       assert.deepEqual(sort, { createdAt: -1 });
       return { limit: async (limit) => {
         assert.equal(limit, 100);
-        return [ownerTransaction, pendingWithoutProviderReference];
+        return [incomingTransaction, ownerTransaction, pendingWithoutProviderReference];
       } };
     } };
   });
@@ -98,9 +114,11 @@ test('history and status only return the logged-in customer’s transactions', a
   assert.equal((await request('/history', false)).status, 401);
   const history = await request('/history?customerId=another-customer');
   assert.equal(history.status, 200);
-  assert.equal(history.body.count, 2);
+  assert.equal(history.body.count, 3);
   assert.equal(history.body.transactions[0].customerId, undefined);
   assert.equal(history.body.transactions[0]._id, undefined);
+  assert.equal(history.body.transactions[0].direction, 'incoming');
+  assert.equal(history.body.transactions[1].direction, 'outgoing');
 
   assert.equal((await request('/status/not-a-uuid')).status, 400);
   assert.equal((await request(`/status/${otherReference}`)).status, 404);

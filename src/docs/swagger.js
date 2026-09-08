@@ -60,6 +60,7 @@ export const swaggerDocument = {
           recipientName: { type: "string" },
           recipientBankCode: { type: "string" },
           transferType: { type: "string", enum: ["intra-bank", "inter-bank"] },
+          direction: { type: "string", enum: ["incoming", "outgoing"] },
           amount: { type: "number" },
           narration: { type: "string" },
           status: { type: "string", enum: ["pending", "successful", "failed"] },
@@ -113,7 +114,7 @@ export const swaggerDocument = {
         summary: "View your own transaction history",
         security: [{ bearerAuth: [] }],
         description:
-          "Returns up to 100 of the logged-in customer’s transactions, newest first. Customer IDs from query parameters are ignored.",
+          "Returns up to 100 outgoing and successful incoming transactions for the logged-in customer’s account, newest first. Customer IDs from query parameters are ignored.",
         responses: {
           200: jsonResponse("Private transaction history.", {
             type: "object",
