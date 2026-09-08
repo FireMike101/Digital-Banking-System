@@ -21,6 +21,8 @@ The amount must be positive, no greater than ₦1 billion, and have at most two 
 
 A local transaction with a unique reference is saved before calling the provider. Confirmed transfers are marked `successful`. Clear provider rejections are marked `failed`. Provider timeouts and invalid success responses remain `pending`, because repeating an uncertain transfer could send the money twice.
 
-On 8 September 2026, a live ₦100 intra-bank transfer succeeded through this application. The sender balance changed from ₦15,000 to ₦14,900, the recipient balance changed from ₦15,000 to ₦15,100, and NibssByPhoenix returned provider reference `TX1788900961274`. A live inter-bank transfer still needs a fictional account belonging to another registered bank.
+On 8 September 2026, a live ₦100 intra-bank transfer succeeded through this application. The sender balance changed from ₦15,000 to ₦14,900, the recipient balance changed from ₦15,000 to ₦15,100, and NibssByPhoenix returned provider reference `TX1788900961274`.
+
+On the same day, a live ₦100 inter-bank transfer also succeeded through this application. Name enquiry confirmed account `2957343904` at bank `295`. The transfer was identified as `inter-bank`, the sender balance changed from ₦14,900 to ₦14,800, transaction status returned `successful`, and NibssByPhoenix returned provider reference `TX1788905975356`.
 
 Automated tests use fake provider responses and do not move funds.
